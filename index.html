@@ -4737,12 +4737,11 @@ function qcApp() {
             Proyecto: this.getProjectName(el.projectId), 
             Cliente: this.getProjectCliente(el.projectId), 
             ID: el.wpsReference || '—',
-            'OT (Orden de Trabajo)': el.otNumber || '—',
             Material: el.material || '—', 
             Cantidad: el.quantity,
             'Peso (KG)': el.unitWeight || 0,
             'Total KGS': totalKgs,
-            Prioridad: (el.priority || 'normal').toUpperCase(), 
+            OT: el.otNumber || '—',
             Proceso: process.name,
             'Fecha Registro': rec.fechaRegistro,
             Estado: rec.statusText, 
@@ -5024,12 +5023,11 @@ function qcApp() {
         'Proyecto',
         'Cliente',
         'ID',
-        'OT (Orden de Trabajo)',
         'Material',
         'Cantidad',
         'Peso (KG)',
         'Total KGS',
-        'Prioridad',
+        'OT',
         'Proceso',
         'Fecha Registro',
         'Estado',
@@ -5044,55 +5042,25 @@ function qcApp() {
         const unitWeight = parseFloat(el.unitWeight) || 0;
         const cantidad = parseInt(el.quantity) || 0;
         const totalKgs = Math.round(cantidad * unitWeight * 10) / 10;
-        const prioridadLabel = (el.priority || 'normal').toUpperCase();
 
         for (let process of this.sortedProcesses()) {
-          const rec = el.stageRecords ? el.stageRecords[process.id] : null;
-          // Solo incluir si fue trabajado en esta jornada
-          if (!rec || rec.workDayId !== this.reportWorkDayId) continue;
-          
-          const status = rec ? rec.status : 'pending';
-          const statusLabel = status === 'approved' ? 'APROBADO' : 
-                            status === 'rejected' ? 'RECHAZADO' : 
-                            status === 'na' ? 'NO APLICA' : 'PENDIENTE';
-          const responsibleName = rec && rec.responsibleId ? this.getResponsibleName(rec.responsibleId) : '—';
-          
-          // Fecha desde primera foto (misma fecha del registro fotográfico)
-          // Fallback a fecha de la jornada si no hay fotos
-          let fechaRegistro = '—';
-          const photos = Array.isArray(rec.photos) ? rec.photos : [];
-          const firstPhotoTs = photos.length > 0 ? photos[0].timestamp : null;
-          const wdDate = workDay ? workDay.date : null;
-          const tsSource = firstPhotoTs || wdDate;
-          if (tsSource) {
-            try {
-              const d = new Date(tsSource);
-              const dia = d.toLocaleDateString('es-CL', { weekday: 'short' }).toUpperCase().replace('.','');
-              const fecha = d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
-              fechaRegistro = dia + ' ' + fecha;
-            } catch(e) {}
-          }
-          
-          const obs = rec && rec.observations ? rec.observations.replace(/\n/g, ' | ') : '—';
-          const photoCount = rec && rec.photos ? rec.photos.length : 0;
-          
+          const rec = this.getProcessDataForExport(el, process.id);
           rows.push([
             el.name || '—',
             this.getProjectName(el.projectId),
             this.getProjectCliente(el.projectId),
             el.wpsReference || '—',
-            el.otNumber || '—',
             el.material || '—',
             cantidad,
             unitWeight,
             totalKgs,
-            prioridadLabel,
+            el.otNumber || '—',
             process.name,
-            fechaRegistro,
-            statusLabel,
-            responsibleName,
-            obs,
-            photoCount
+            rec.fechaRegistro,
+            rec.statusText,
+            rec.responsibleName,
+            rec.observations || '—',
+            rec.photosCount
           ]);
         }
       }
@@ -5110,12 +5078,11 @@ function qcApp() {
         { wch: 20 }, // Proyecto
         { wch: 20 }, // Cliente
         { wch: 15 }, // ID
-        { wch: 18 }, // OT
         { wch: 15 }, // Material
         { wch: 10 }, // Cantidad
         { wch: 10 }, // Peso (KG)
         { wch: 12 }, // Total KGS
-        { wch: 10 }, // Prioridad
+        { wch: 18 }, // OT
         { wch: 20 }, // Proceso
         { wch: 16 }, // Fecha Registro
         { wch: 12 }, // Estado

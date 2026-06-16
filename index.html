@@ -1249,175 +1249,195 @@ input[type=number]{-moz-appearance:textfield}
 </div>
 
 <!-- ─────── TAB: ESTADÍSTICAS ─────── -->
-<div x-show="currentTab === 'stats'" class="px-4 pt-4 space-y-5">
+<div x-show="currentTab === 'stats'" class="px-4 pt-4 pb-8 space-y-4">
 
-  <!-- Filtro por Jornada -->
+  <!-- ── SELECTOR DE JORNADA ── -->
   <div class="bg-[#0d0e12] border border-[#1a1c23] rounded-xl px-4 py-3">
-    <div class="flex items-center gap-2 mb-2">
-      <span class="text-[#5a6074] text-xs font-bold uppercase tracking-wide">📅 Filtrar por jornada</span>
-      <span x-show="filterWorkDay" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 uppercase tracking-wide">Activo</span>
+    <div class="flex items-center justify-between mb-2">
+      <span class="text-[#5a6074] text-xs font-bold uppercase tracking-wide">📅 Jornada</span>
+      <button @click="showWorkDayModal = true" class="text-xs text-teal-400 hover:text-teal-300 border border-teal-500/20 px-2.5 py-1 rounded-lg font-bold transition-all">+ Nueva</button>
     </div>
-    <div class="flex gap-2">
-      <select x-model="filterWorkDay" class="qci flex-1 text-sm">
-        <option value="">Todos los días (sin filtro)</option>
-        <template x-for="wd in workDays" :key="wd.id">
-          <option :value="wd.id" x-text="wd.label + ' — ' + new Date(wd.date).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})"></option>
-        </template>
-      </select>
-      <button x-show="filterWorkDay" @click="filterWorkDay = ''" class="px-3 py-2 text-xs text-[#5a6074] hover:text-white border border-[#1a1c23] hover:border-[#2a2c33] rounded-lg transition-all whitespace-nowrap">Limpiar</button>
-    </div>
-    <p x-show="filterWorkDay" class="text-teal-400 text-xs mt-1.5">
-      Los KG por Maestro, Proceso y Proyecto muestran solo la jornada seleccionada
-    </p>
-    <p x-show="!filterWorkDay" class="text-[#5a6074] text-xs mt-1.5">
-      Selecciona una jornada para ver los KG trabajados ese día específico
-    </p>
+    <select x-model="filterWorkDay" class="qci w-full text-sm">
+      <option value="">— Selecciona una jornada —</option>
+      <template x-for="wd in workDays.slice().sort((a,b)=>new Date(a.date)-new Date(b.date))" :key="wd.id">
+        <option :value="wd.id" x-text="wd.label + ' · ' + new Date(wd.date).toLocaleDateString('es-CL',{day:'2-digit',month:'2-digit',year:'numeric'})"></option>
+      </template>
+    </select>
   </div>
 
-  <div class="grid grid-cols-2 gap-3">
-    <div class="stat-card">
-      <div class="stat-num text-white" x-text="elements.length"></div>
-      <div class="stat-lbl">Total Elementos</div>
-      <div class="prog-track mt-3"><div class="prog-fill prog-r" style="width:100%"></div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num text-[#14b8a6]" x-text="completedElements()"></div>
-      <div class="stat-lbl">Completados</div>
-      <div class="prog-track mt-3"><div class="prog-fill prog-t" :style="'width:' + (elements.length ? Math.round(completedElements()/elements.length*100) : 0) + '%'"></div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num" :class="approvalRatePct() >= 70 ? 'text-[#14b8a6]' : approvalRatePct() >= 40 ? 'text-[#f59e0b]' : 'text-[#ef4444]'" x-text="approvalRatePct() + '%'"></div>
-      <div class="stat-lbl">Tasa Aprobación</div>
-      <div class="prog-track mt-3"><div class="prog-fill" :class="approvalRatePct() >= 70 ? 'prog-t' : 'prog-r'" :style="'width:' + approvalRatePct() + '%'"></div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num text-[#f59e0b]" x-text="urgentElements()"></div>
-      <div class="stat-lbl">Urgentes / Críticos</div>
-      <div class="prog-track mt-3"><div class="prog-fill prog-a" :style="'width:' + (elements.length ? Math.round(urgentElements()/elements.length*100) : 0) + '%'"></div></div>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="section-hdr mb-3">Aprobación por Etapa</div>
-    <div class="space-y-3">
-      <template x-for="p in sortedProcesses()" :key="p.id">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-medium" x-text="p.name"></span>
-            <span class="mono text-xs text-[#8891aa]" x-text="getStageApprovalRate(p.id) + '%'"></span>
+  <!-- ── BLOQUE PRINCIPAL: con jornada seleccionada ── -->
+  <template x-if="filterWorkDay">
+    <div class="space-y-4">
+
+      <!-- KPI Cards: Total KG jornada + Total elementos -->
+      <div x-data="{ data: statsForWorkDay(filterWorkDay) }">
+        <div class="grid grid-cols-2 gap-3">
+          <div class="stat-card">
+            <div class="stat-num text-[#14b8a6]" x-text="statsForWorkDay(filterWorkDay).totalKg.toLocaleString('es-CL')"></div>
+            <div class="stat-lbl">KG Trabajados</div>
+            <div class="text-[10px] text-[#5a6074] mt-1">en la jornada</div>
           </div>
-          <div class="prog-track"><div class="prog-fill" :class="getStageApprovalRate(p.id) >= 70 ? 'prog-t' : 'prog-r'" :style="'width:' + getStageApprovalRate(p.id) + '%'"></div></div>
-        </div>
-      </template>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="section-hdr mb-3">Strikes por Maestro</div>
-    <div x-show="responsibles.every(r => getResponsibleStrikes(r.id).length === 0)" class="text-sm text-[#5a6074] italic">Sin strikes registrados</div>
-    <div class="space-y-2">
-      <template x-for="resp in responsibles.filter(r => getResponsibleStrikes(r.id).length > 0)" :key="resp.id">
-        <div class="flex items-center gap-3 py-2 border-b border-[#1a1c23] last:border-0">
-          <div class="avatar-sm" :style="'background:' + respAvatarColor(resp.id) + '22;color:' + respAvatarColor(resp.id)" x-text="resp.name.charAt(0)"></div>
-          <div class="flex-1 min-w-0">
-            <div class="text-sm font-medium truncate" x-text="resp.name"></div>
-            <div class="text-xs text-[#8891aa]" x-text="resp.role"></div>
+          <div class="stat-card">
+            <div class="stat-num text-white" x-text="statsForWorkDay(filterWorkDay).elementCount"></div>
+            <div class="stat-lbl">Elementos</div>
+            <div class="text-[10px] text-[#5a6074] mt-1">con actividad</div>
           </div>
-          <div class="strike-badge" x-text="getResponsibleStrikes(resp.id).length + ' ⚡'"></div>
         </div>
-      </template>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="section-hdr mb-3">Top Responsables</div>
-    <div x-show="topResponsibles().length === 0" class="text-sm text-[#5a6074] italic">Sin datos</div>
-    <div class="space-y-3">
-      <template x-for="(r, i) in topResponsibles()" :key="i">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-medium" x-text="r.name"></span>
-            <span class="mono text-xs text-[#8891aa]" x-text="r.count + ' aprobados'"></span>
-          </div>
-          <div class="prog-track"><div class="prog-fill prog-t" :style="'width:' + Math.round(r.count / (topResponsibles()[0] ? topResponsibles()[0].count : 1) * 100) + '%'"></div></div>
-        </div>
-      </template>
-    </div>
-  </div>
-  <div class="stat-card">
-    <div class="section-hdr mb-3">Actividad Reciente</div>
-    <div x-show="recentActivity().length === 0" class="text-sm text-[#5a6074] italic">Sin actividad registrada</div>
-    <div class="space-y-1">
-      <template x-for="(act, i) in recentActivity()" :key="i">
-        <div class="flex items-start gap-3 py-2 border-b border-[#1a1c23] last:border-0">
-          <div class="w-2 h-2 bg-[#c41e1e] rounded-full mt-2 flex-shrink-0"></div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-sm font-medium truncate" x-text="act.elementName"></span>
-              <span class="mono text-[10px] text-[#5a6074] flex-shrink-0" x-text="timeAgo(act.timestamp)"></span>
+      </div>
+
+      <!-- KG por Proceso (con % del total de la jornada) -->
+      <div class="stat-card">
+        <div class="section-hdr mb-3">KG por Proceso · % del total</div>
+        <div x-show="statsForWorkDay(filterWorkDay).byProcess.length === 0" class="text-sm text-[#5a6074] italic">Sin datos en esta jornada</div>
+        <div class="space-y-3">
+          <template x-for="(p, i) in statsForWorkDay(filterWorkDay).byProcess" :key="p.id">
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <div class="flex items-center gap-2">
+                  <div class="w-2 h-2 rounded-full flex-shrink-0" :style="'background:' + getStageColor(p.id)"></div>
+                  <span class="text-sm font-medium" x-text="p.name"></span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="mono text-xs font-bold" :style="'color:' + getStageColor(p.id)" x-text="p.pct + '%'"></span>
+                  <span class="mono text-xs text-[#8891aa]" x-text="p.kg.toLocaleString('es-CL') + ' KG'"></span>
+                </div>
+              </div>
+              <div class="prog-track">
+                <div class="prog-fill" :style="'width:' + p.pct + '%;background:' + getStageColor(p.id)"></div>
+              </div>
             </div>
-            <div class="text-xs text-[#8891aa]" x-text="'→ ' + (act.stageName || act.stageId)"></div>
-            <div class="text-[11px] text-[#5a6074]" x-text="'👷 ' + getResponsibleName(act.responsibleId)"></div>
-          </div>
+          </template>
         </div>
-      </template>
+      </div>
+
+      <!-- KG por Maestro (con desglose por proceso) -->
+      <div class="stat-card">
+        <div class="section-hdr mb-3">KG por Maestro · Desglose por proceso</div>
+        <div x-show="statsForWorkDay(filterWorkDay).byResponsible.length === 0" class="text-sm text-[#5a6074] italic">Sin datos en esta jornada</div>
+        <div class="space-y-4">
+          <template x-for="(r, i) in statsForWorkDay(filterWorkDay).byResponsible" :key="r.id">
+            <div class="bg-[#0a0b0e] border border-[#1a1c23] rounded-xl p-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="avatar-sm" :style="'background:' + respAvatarColor(r.id) + '22;color:' + respAvatarColor(r.id)" x-text="r.name.charAt(0)"></div>
+                  <span class="text-sm font-semibold text-white" x-text="r.name"></span>
+                </div>
+                <span class="mono text-sm font-bold text-[#14b8a6]" x-text="r.totalKg.toLocaleString('es-CL') + ' KG'"></span>
+              </div>
+              <!-- Desglose por proceso -->
+              <div class="space-y-1.5 pl-8">
+                <template x-for="proc in r.byProcess" :key="proc.id">
+                  <div x-show="proc.kg > 0" class="flex items-center justify-between">
+                    <div class="flex items-center gap-1.5">
+                      <div class="w-1.5 h-1.5 rounded-full flex-shrink-0" :style="'background:' + getStageColor(proc.id)"></div>
+                      <span class="text-xs text-[#8891aa]" x-text="proc.name"></span>
+                    </div>
+                    <span class="mono text-xs" :style="'color:' + getStageColor(proc.id)" x-text="proc.kg.toLocaleString('es-CL') + ' KG'"></span>
+                  </div>
+                </template>
+              </div>
+              <!-- Barra de progreso relativa al top maestro -->
+              <div class="prog-track mt-2">
+                <div class="prog-fill prog-t" :style="'width:' + Math.round(r.totalKg / (statsForWorkDay(filterWorkDay).byResponsible[0].totalKg || 1) * 100) + '%'"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
     </div>
-  </div>
-  
-  <!-- KG Trabajados por Maestro -->
-  <div class="stat-card">
-    <div class="section-hdr mb-3">KG Trabajados por Maestro</div>
-    <div x-show="kgByResponsible().length === 0" class="text-sm text-[#5a6074] italic">Sin datos</div>
-    <div class="space-y-3">
-      <template x-for="(r, i) in kgByResponsible()" :key="i">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-medium" x-text="r.name"></span>
-            <span class="mono text-xs text-[#14b8a6] font-bold" x-text="r.kg.toFixed(1) + ' KG'"></span>
-          </div>
-          <div class="prog-track"><div class="prog-fill prog-t" :style="'width:' + Math.round(r.kg / (kgByResponsible()[0] ? kgByResponsible()[0].kg : 1) * 100) + '%'"></div></div>
-        </div>
-      </template>
+  </template>
+
+  <!-- ── MENSAJE cuando no hay jornada seleccionada ── -->
+  <template x-if="!filterWorkDay">
+    <div class="stat-card text-center py-6">
+      <div class="text-3xl mb-2">📅</div>
+      <div class="text-sm font-semibold text-[#dde1ea] mb-1">Selecciona una jornada</div>
+      <div class="text-xs text-[#5a6074]">Los KG, maestros y porcentajes por proceso<br>se calcularán para la jornada elegida</div>
     </div>
-  </div>
-  
-  <!-- KG Trabajados por Proceso -->
+  </template>
+
+  <!-- ── GRÁFICO SEMANAL: ARMADO + SOLDADURA por jornada ── -->
   <div class="stat-card">
-    <div class="section-hdr mb-3">KG Trabajados por Proceso</div>
-    <div x-show="kgByProcess().length === 0" class="text-sm text-[#5a6074] italic">Sin datos</div>
-    <div class="space-y-3">
-      <template x-for="(p, i) in kgByProcess()" :key="i">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-medium" x-text="p.name"></span>
-            <span class="mono text-xs text-[#14b8a6] font-bold" x-text="p.kg.toFixed(1) + ' KG'"></span>
-          </div>
-          <div class="prog-track"><div class="prog-fill prog-t" :style="'width:' + Math.round(p.kg / (kgByProcess()[0] ? kgByProcess()[0].kg : 1) * 100) + '%'"></div></div>
-        </div>
-      </template>
+    <div class="flex items-center justify-between mb-1">
+      <div class="section-hdr mb-0">Evolución semanal · KG por jornada</div>
     </div>
-  </div>
-  
-  <!-- KG Trabajados por Proyecto -->
-  <div class="stat-card">
-    <div class="section-hdr mb-3">KG Completados por Proyecto</div>
-    <div x-show="kgByProject().length === 0" class="text-sm text-[#5a6074] italic">Sin datos</div>
-    <div class="space-y-3">
-      <template x-for="(pj, i) in kgByProject()" :key="i">
-        <div>
-          <div class="flex items-center justify-between mb-1">
-            <span class="text-sm font-medium" x-text="pj.name"></span>
-            <span class="mono text-xs text-[#14b8a6] font-bold" x-text="pj.kg.toFixed(1) + ' KG'"></span>
-          </div>
-          <div class="prog-track"><div class="prog-fill prog-t" :style="'width:' + Math.round(pj.kg / (kgByProject()[0] ? kgByProject()[0].kg : 1) * 100) + '%'"></div></div>
+    <div class="text-[10px] text-[#5a6074] mb-3">ARMADO y SOLDADURA · ordenado por fecha</div>
+    <div x-show="weeklyChartData().labels.length === 0" class="text-sm text-[#5a6074] italic py-4 text-center">Sin jornadas con datos registrados</div>
+    <div x-show="weeklyChartData().labels.length > 0">
+      <!-- SVG Chart rendered via Alpine -->
+      <div class="overflow-x-auto -mx-1">
+        <div :style="'min-width:' + Math.max(320, weeklyChartData().labels.length * 72 + 48) + 'px'">
+          <svg :viewBox="'0 0 ' + Math.max(320, weeklyChartData().labels.length * 72 + 48) + ' 180'"
+               xmlns="http://www.w3.org/2000/svg"
+               class="w-full"
+               style="height:180px">
+            <template x-if="weeklyChartData().labels.length > 0">
+              <g x-data="{ cd: weeklyChartData() }">
+                <!-- Grid lines -->
+                <template x-for="gl in [0,1,2,3,4]" :key="gl">
+                  <line :x1="36" :y1="12 + gl * 28" :x2="Math.max(320, cd.labels.length * 72 + 48) - 8" :y2="12 + gl * 28"
+                        stroke="#1a1c23" stroke-width="1"/>
+                </template>
+                <!-- Y axis labels -->
+                <template x-for="(gl, gi) in [0,1,2,3,4]" :key="'y'+gi">
+                  <text :x="32" :y="16 + gi * 28" text-anchor="end" font-size="8" fill="#5a6074"
+                        x-text="Math.round(cd.maxKg * (1 - gi/4)).toLocaleString('es-CL')"></text>
+                </template>
+                <!-- Bars per jornada -->
+                <template x-for="(lbl, li) in cd.labels" :key="'bar'+li">
+                  <g :transform="'translate(' + (40 + li * 72) + ',0)'">
+                    <!-- ARMADO bar -->
+                    <rect
+                      :x="2" :width="26"
+                      :y="12 + (1 - (cd.armado[li] / (cd.maxKg || 1))) * 112"
+                      :height="(cd.armado[li] / (cd.maxKg || 1)) * 112"
+                      fill="#d97706" rx="2" opacity="0.85"/>
+                    <!-- SOLDADURA bar -->
+                    <rect
+                      :x="32" :width="26"
+                      :y="12 + (1 - (cd.soldadura[li] / (cd.maxKg || 1))) * 112"
+                      :height="(cd.soldadura[li] / (cd.maxKg || 1)) * 112"
+                      fill="#c41e1e" rx="2" opacity="0.85"/>
+                    <!-- KG labels on top of bars (armado) -->
+                    <text x-show="cd.armado[li] > 0"
+                      :x="15" :y="12 + (1 - (cd.armado[li] / (cd.maxKg || 1))) * 112 - 3"
+                      text-anchor="middle" font-size="7" fill="#d97706"
+                      x-text="cd.armado[li] > 0 ? cd.armado[li].toLocaleString('es-CL') : ''"></text>
+                    <text x-show="cd.soldadura[li] > 0"
+                      :x="45" :y="12 + (1 - (cd.soldadura[li] / (cd.maxKg || 1))) * 112 - 3"
+                      text-anchor="middle" font-size="7" fill="#ef4444"
+                      x-text="cd.soldadura[li] > 0 ? cd.soldadura[li].toLocaleString('es-CL') : ''"></text>
+                    <!-- Jornada label -->
+                    <text :x="30" y="140" text-anchor="middle" font-size="8" fill="#8891aa"
+                          x-text="lbl"></text>
+                    <!-- Date label -->
+                    <text :x="30" y="150" text-anchor="middle" font-size="7" fill="#5a6074"
+                          x-text="cd.dates[li]"></text>
+                  </g>
+                </template>
+              </g>
+            </template>
+          </svg>
         </div>
-      </template>
+      </div>
+      <!-- Leyenda -->
+      <div class="flex items-center gap-4 mt-2 justify-center">
+        <div class="flex items-center gap-1.5">
+          <div class="w-3 h-3 rounded-sm" style="background:#d97706"></div>
+          <span class="text-xs text-[#8891aa]">Armado</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <div class="w-3 h-3 rounded-sm" style="background:#c41e1e"></div>
+          <span class="text-xs text-[#8891aa]">Soldadura</span>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- KG por Jornada (resumen histórico diario) -->
+  <!-- ── HISTORIAL DE JORNADAS (todas) ── -->
   <div class="stat-card">
-    <div class="flex items-center justify-between mb-3">
-      <div class="section-hdr mb-0">KG por Jornada</div>
-      <button @click="showWorkDayModal = true" class="text-xs text-teal-400 hover:text-teal-300 border border-teal-500/20 hover:border-teal-500/30 px-2.5 py-1 rounded-lg transition-all font-bold">+ Nueva</button>
-    </div>
+    <div class="section-hdr mb-3">Historial de jornadas</div>
     <div x-show="kgByWorkDay().length === 0" class="text-sm text-[#5a6074] italic">Sin jornadas con datos registrados</div>
     <div class="space-y-2">
       <template x-for="(wd, i) in kgByWorkDay()" :key="wd.id">
@@ -1428,9 +1448,9 @@ input[type=number]{-moz-appearance:textfield}
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2">
                 <span class="text-white text-sm font-medium truncate" x-text="wd.label"></span>
-                <span x-show="filterWorkDay === wd.id" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 uppercase tracking-wide">filtrado</span>
+                <span x-show="filterWorkDay === wd.id" class="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 uppercase tracking-wide">activa</span>
               </div>
-              <span class="text-[#5a6074] text-xs" x-text="wd.dateStr + ' · ' + wd.elements + ' aprobaciones'"></span>
+              <span class="text-[#5a6074] text-xs" x-text="wd.dateStr + ' · ' + wd.elements + ' aprob.'"></span>
             </div>
             <span class="mono text-sm font-bold text-[#14b8a6] whitespace-nowrap" x-text="wd.kg.toLocaleString('es-CL') + ' KG'"></span>
           </div>
@@ -1440,8 +1460,9 @@ input[type=number]{-moz-appearance:textfield}
         </div>
       </template>
     </div>
-    <p x-show="kgByWorkDay().length > 0" class="text-[#5a6074] text-xs mt-2">Tap en una jornada para filtrar los KG de arriba</p>
+    <p x-show="kgByWorkDay().length > 0" class="text-[#5a6074] text-xs mt-2 text-center">Tap en una jornada para ver su detalle arriba</p>
   </div>
+
 </div>
 
 
@@ -4506,6 +4527,122 @@ function qcApp() {
       }).filter(w => w.kg > 0 || w.elements > 0);
     },
 
+    // ═══ STATS POR JORNADA ═══
+    statsForWorkDay(wdId) {
+      if (!wdId) return { totalKg: 0, elementCount: 0, byProcess: [], byResponsible: [] };
+
+      const processes = this.sortedProcesses();
+      // Acumular por proceso y por responsable
+      const byProcess = {}; // { [processId]: kg }
+      const byResp = {};    // { [respId]: { [processId]: kg, total: kg } }
+      const elementsSeen = new Set();
+
+      for (const el of this.elements) {
+        if (!el.stageRecords) continue;
+        const qty   = parseFloat(el.quantity)   || 1;
+        const wt    = parseFloat(el.unitWeight)  || 0;
+        const elKg  = qty * wt;
+
+        let elHasActivity = false;
+        for (const proc of processes) {
+          const rec = el.stageRecords[proc.id];
+          if (!rec || rec.workDayId !== wdId) continue;
+          elHasActivity = true;
+
+          // KG del proceso = peso total del elemento (el proceso se aplica a toda la pieza)
+          byProcess[proc.id] = (byProcess[proc.id] || 0) + elKg;
+
+          const rId = rec.responsibleId || '__none__';
+          if (!byResp[rId]) byResp[rId] = { total: 0, procs: {} };
+          byResp[rId].total += elKg;
+          byResp[rId].procs[proc.id] = (byResp[rId].procs[proc.id] || 0) + elKg;
+        }
+        if (elHasActivity) elementsSeen.add(el.id);
+      }
+
+      const totalKg = Object.values(byProcess).reduce((a, b) => a + b, 0);
+
+      const byProcessArr = processes
+        .filter(p => (byProcess[p.id] || 0) > 0)
+        .map(p => ({
+          id: p.id,
+          name: p.name,
+          kg: Math.round((byProcess[p.id] || 0) * 10) / 10,
+          pct: totalKg > 0 ? Math.round((byProcess[p.id] || 0) / totalKg * 100) : 0
+        }))
+        .sort((a, b) => b.kg - a.kg);
+
+      const byResponsibleArr = Object.entries(byResp)
+        .map(([rId, data]) => {
+          const resp = this.responsibles.find(r => r.id === rId);
+          return {
+            id: rId,
+            name: resp ? resp.name : '(Sin asignar)',
+            totalKg: Math.round(data.total * 10) / 10,
+            byProcess: processes.map(p => ({
+              id: p.id,
+              name: p.name,
+              kg: Math.round((data.procs[p.id] || 0) * 10) / 10
+            }))
+          };
+        })
+        .sort((a, b) => b.totalKg - a.totalKg);
+
+      return {
+        totalKg: Math.round(totalKg * 10) / 10,
+        elementCount: elementsSeen.size,
+        byProcess: byProcessArr,
+        byResponsible: byResponsibleArr
+      };
+    },
+
+    // ═══ GRÁFICO SEMANAL ARMADO + SOLDADURA ═══
+    weeklyChartData() {
+      // Ordenar jornadas por fecha
+      const sorted = this.workDays
+        .slice()
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      // Identificar proceso ARMADO y SOLDADURA por nombre
+      const procArmado   = this.sortedProcesses().find(p => (p.name||'').toLowerCase().includes('arma'));
+      const procSoldadura = this.sortedProcesses().find(p => (p.name||'').toLowerCase().includes('sold'));
+
+      const labels   = [];
+      const dates    = [];
+      const armado   = [];
+      const soldadura = [];
+
+      for (const wd of sorted) {
+        let kgArm = 0, kgSol = 0;
+        for (const el of this.elements) {
+          if (!el.stageRecords) continue;
+          const qty = parseFloat(el.quantity)  || 1;
+          const wt  = parseFloat(el.unitWeight) || 0;
+          const elKg = qty * wt;
+
+          if (procArmado) {
+            const rec = el.stageRecords[procArmado.id];
+            if (rec && rec.workDayId === wd.id) kgArm += elKg;
+          }
+          if (procSoldadura) {
+            const rec = el.stageRecords[procSoldadura.id];
+            if (rec && rec.workDayId === wd.id) kgSol += elKg;
+          }
+        }
+        // Solo incluir jornadas con al menos algún dato
+        if (kgArm > 0 || kgSol > 0) {
+          labels.push(wd.label);
+          const d = new Date(wd.date);
+          dates.push(d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' }));
+          armado.push(Math.round(kgArm * 10) / 10);
+          soldadura.push(Math.round(kgSol * 10) / 10);
+        }
+      }
+
+      const maxKg = Math.max(...armado, ...soldadura, 1);
+      return { labels, dates, armado, soldadura, maxKg };
+    },
+
     // ═══ STRIKES ═══
     getResponsibleStrikes(respId) {
       if (!respId) return [];
@@ -5044,7 +5181,35 @@ function qcApp() {
         const totalKgs = Math.round(cantidad * unitWeight * 10) / 10;
 
         for (let process of this.sortedProcesses()) {
-          const rec = this.getProcessDataForExport(el, process.id);
+          const rec = el.stageRecords ? el.stageRecords[process.id] : null;
+          // Solo incluir si fue trabajado en esta jornada
+          if (!rec || rec.workDayId !== this.reportWorkDayId) continue;
+          
+          const status = rec ? rec.status : 'pending';
+          const statusLabel = status === 'approved' ? 'APROBADO' : 
+                            status === 'rejected' ? 'RECHAZADO' : 
+                            status === 'na' ? 'NO APLICA' : 'PENDIENTE';
+          const responsibleName = rec && rec.responsibleId ? this.getResponsibleName(rec.responsibleId) : '—';
+          
+          // Fecha desde primera foto (misma fecha del registro fotográfico)
+          // Fallback a fecha de la jornada si no hay fotos
+          let fechaRegistro = '—';
+          const photos = Array.isArray(rec.photos) ? rec.photos : [];
+          const firstPhotoTs = photos.length > 0 ? photos[0].timestamp : null;
+          const wdDate = workDay ? workDay.date : null;
+          const tsSource = firstPhotoTs || wdDate;
+          if (tsSource) {
+            try {
+              const d = new Date(tsSource);
+              const dia = d.toLocaleDateString('es-CL', { weekday: 'short' }).toUpperCase().replace('.','');
+              const fecha = d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              fechaRegistro = dia + ' ' + fecha;
+            } catch(e) {}
+          }
+          
+          const obs = rec && rec.observations ? rec.observations.replace(/\n/g, ' | ') : '—';
+          const photoCount = rec && rec.photos ? rec.photos.length : 0;
+          
           rows.push([
             el.name || '—',
             this.getProjectName(el.projectId),
@@ -5056,11 +5221,11 @@ function qcApp() {
             totalKgs,
             el.otNumber || '—',
             process.name,
-            rec.fechaRegistro,
-            rec.statusText,
-            rec.responsibleName,
-            rec.observations || '—',
-            rec.photosCount
+            fechaRegistro,
+            statusLabel,
+            responsibleName,
+            obs,
+            photoCount
           ]);
         }
       }
